@@ -15,20 +15,20 @@ const (
 )
 
 var (
-	mgoSession  *mgo.Session
-	dataChannel chan User
+	mgoSession *mgo.Session
 )
 
 type UserDao struct {
 	BulkSize      int
 	FlushInterval uint32
+	dataChannel   chan User
 }
 
 func NewUserDao(size int, interval uint32) *UserDao {
 	u := new(UserDao)
 	u.BulkSize = size
 	u.FlushInterval = interval
-	dataChannel = make(chan User, size*5)
+	u.dataChannel = make(chan User, size*5)
 	return u
 }
 
@@ -46,11 +46,11 @@ func (u *UserDao) getSession() *mgo.Session {
 }
 
 func (u *UserDao) Add(user User) error {
-	dataChannel <- user
-	if len(dataChannel) >= u.BulkSize {
+	u.dataChannel <- user
+	if len(u.dataChannel) >= u.BulkSize {
 		fmt.Println("批量保存")
 		users := u.getData()
-		return u.insert(users...)
+		return u.insert(users)
 	}
 	return nil
 }
@@ -67,42 +67,44 @@ func (u *UserDao) UserDaoTimer() {
 func (u *UserDao) callback(args interface{}) error {
 	fmt.Println("超时自动保存")
 	users := u.getData()
-	return u.insert(users...)
+	return u.insert(users)
 }
 
-func (u *UserDao) getData() []User {
-	size := len(dataChannel)
+func (u *UserDao) getData() *[]User {
+	size := len(u.dataChannel)
 	if size > u.BulkSize {
 		size = u.BulkSize
 	}
-	fmt.Println("size = ", size)
-	users := make([]User, size)
+	users := make([]User, 0, size)
 	for i := 0; i < size; i++ {
 		select {
 		case <-time.After(1 * time.Second):
 			fmt.Println("channel timeout 1 second")
 			break
-		case user := <-dataChannel:
-			users[i] = user
+		case user := <-u.dataChannel:
+			users = append(users, user)
 		}
 	}
-	index := 0
-	for i := 0; i < size; i++ {
-		if users[i].Name == "" {
-			index = i
-			break
-		}
-	}
-	var result []User = users[:index]
-	return result
+	fmt.Println("users = ", users)
+	return &users
 }
 
-func (u *UserDao) insert(users ...User) error {
-	if len(users) == 0 {
+func (u *UserDao) insert(users *[]User) error {
+	size := len(*users)
+	if size == 0 {
+		fmt.Println("没有需要保存的数据")
 		return nil
+	}
+	docs := make([]interface{}, 0, size)
+	for _, v := range *users {
+		docs = append(docs, v)
 	}
 	session := u.getSession()
 	defer session.Close()
 	c := session.DB(DB).C(COLLECTION)
-	return c.Insert(users)
+	err := c.Insert(docs...)
+	if err != nil {
+		fmt.Println("error : ", err)
+	}
+	return err
 }
