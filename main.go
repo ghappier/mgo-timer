@@ -29,5 +29,6 @@ func main() {
 			userDao.Add(user)
 		}
 	}()
-	userDao.UserDaoTimer()
+	//userDao.UserDaoTimer()
+	time.Sleep(time.Duration(userDao.FlushInterval*10) * time.Second)
 }

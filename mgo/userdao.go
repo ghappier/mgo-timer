@@ -3,19 +3,6 @@ package mgo
 import (
 	"fmt"
 	"time"
-
-	"gopkg.in/mgo.v2"
-	//"gopkg.in/mgo.v2/bson"
-)
-
-const (
-	URL        = "localhost:27017"
-	DB         = "promtest"
-	COLLECTION = "prom"
-)
-
-var (
-	mgoSession *mgo.Session
 )
 
 type UserDao struct {
@@ -29,20 +16,8 @@ func NewUserDao(size int, interval uint32) *UserDao {
 	u.BulkSize = size
 	u.FlushInterval = interval
 	u.dataChannel = make(chan User, size*5)
+	go u.UserDaoTimer()
 	return u
-}
-
-func (u *UserDao) getSession() *mgo.Session {
-	if mgoSession == nil {
-		var err error
-		mgoSession, err = mgo.Dial(URL)
-		if err != nil {
-			//panic(err) //直接终止程序运行
-			fmt.Errorf("无法连接mongodb : ", err.Error())
-		}
-	}
-	//最大连接池默认为4096
-	return mgoSession.Clone()
 }
 
 func (u *UserDao) Add(user User) error {
@@ -99,7 +74,8 @@ func (u *UserDao) insert(users *[]User) error {
 	for _, v := range *users {
 		docs = append(docs, v)
 	}
-	session := u.getSession()
+	//session := u.getSession()
+	session := GetInstance().GetSession()
 	defer session.Close()
 	c := session.DB(DB).C(COLLECTION)
 	err := c.Insert(docs...)
