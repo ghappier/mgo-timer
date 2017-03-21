@@ -29,6 +29,14 @@ type MgoSessionUtils struct {
 }
 
 func (p MgoSessionUtils) GetSession() *mgo.Session {
+	if p.mgoSession == nil {
+		session, err := mgo.Dial(URL)
+		if err != nil {
+			panic(err) //直接终止程序运行
+			//fmt.Errorf("无法连接mongodb : ", err.Error())
+		}
+		p.mgoSession = session
+	}
 	//最大连接池默认为4096
 	return p.mgoSession.Clone()
 }
