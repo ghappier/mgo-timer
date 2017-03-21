@@ -64,7 +64,6 @@ func (u *MetricDao) getData() *[]Metric {
 			metrics = append(metrics, metric)
 		}
 	}
-	//fmt.Println("metric = ", metrics)
 	return &metrics
 }
 
