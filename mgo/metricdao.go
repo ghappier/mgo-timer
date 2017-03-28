@@ -89,7 +89,7 @@ func (u *MetricDao) insert(metrics *[]Metric) error {
 
 		timeSeries := make([]Timeseries, 0, 24)
 		for i := 0; i < 24; i++ {
-			ts := Timeseries{Hour: i, Data: new([]Data)}
+			ts := Timeseries{Hour: i, Data: make([]Data, 0, 0)}
 			timeSeries = append(timeSeries, ts)
 		}
 		updateSetOnInsert := bson.M{"timeseries": timeSeries}
@@ -130,8 +130,8 @@ func (u *MetricDao) mergeMetric(metric *Metric, met Metric) *Metric {
 	for _, vt := range met.Timeseries {
 		for _, ts := range metric.Timeseries {
 			if ts.Hour == vt.Hour {
-				for _, vv := range *vt.Data {
-					*ts.Data = append(*ts.Data, vv)
+				for _, vv := range vt.Data {
+					ts.Data = append(ts.Data, vv)
 				}
 				break
 			}

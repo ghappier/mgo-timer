@@ -12,8 +12,8 @@ type Data struct {
 }
 
 type Timeseries struct {
-	Hour int     `bson:"hour"`
-	Data *[]Data `bson:"data"`
+	Hour int    `bson:"hour"`
+	Data []Data `bson:"data"`
 }
 type Metric struct {
 	Date              time.Time         `bson:"date" json:"date"`
